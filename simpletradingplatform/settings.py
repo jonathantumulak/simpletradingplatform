@@ -144,3 +144,6 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.AllowAny",
     ],
 }
+
+TRANSACTION_MAX_DIGITS = 32
+TRANSACTION_DECIMAL_PLACES = 5
