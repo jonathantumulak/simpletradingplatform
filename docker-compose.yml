@@ -20,3 +20,14 @@ services:
       - POSTGRES_PASSWORD=postgres
     depends_on:
       - db
+  migration:
+    build: .
+    volumes:
+      - .:/app
+    command: python manage.py migrate
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - web
