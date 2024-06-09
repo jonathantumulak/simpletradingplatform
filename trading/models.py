@@ -22,10 +22,10 @@ class Stock(TimeStampedModel):
 
 
 class OrderManager(models.Manager):
-    def get_available_balance(self, stock: Stock) -> int:
+    def get_available_balance(self, stock: Stock, user: User) -> int:
         return (
             self.get_queryset()
-            .filter(stock=stock)
+            .filter(stock=stock, user=user)
             .aggregate(Sum("quantity"))["quantity__sum"]
         )
 
