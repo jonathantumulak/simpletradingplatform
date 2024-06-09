@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
+from django.db.models import Sum
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from trading.constants import OrderTypes
@@ -16,8 +17,17 @@ class Stock(TimeStampedModel):
         help_text=_("Price in USD"),
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.name} ({self.symbol})"
+
+
+class OrderManager(models.Manager):
+    def get_available_balance(self, stock: Stock) -> int:
+        return (
+            self.get_queryset()
+            .filter(stock=stock)
+            .aggregate(Sum("quantity"))["quantity__sum"]
+        )
 
 
 class Order(OrderTypes, TimeStampedModel):
@@ -39,3 +49,5 @@ class Order(OrderTypes, TimeStampedModel):
         verbose_name=_("Order Type"),
         choices=OrderTypes.CHOICES,
     )
+
+    objects = OrderManager()
