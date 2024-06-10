@@ -21,7 +21,7 @@ class Migration(migrations.Migration):
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('created', django_extensions.db.fields.CreationDateTimeField(auto_now_add=True, verbose_name='created')),
                 ('modified', django_extensions.db.fields.ModificationDateTimeField(auto_now=True, verbose_name='modified')),
-                ('uploaded_file', models.FileField(upload_to='media/uploaded_trade_csv/', verbose_name='Uploaded File')),
+                ('uploaded_file', models.FileField(upload_to='uploaded_trade_csv/', verbose_name='Uploaded File')),
                 ('status', models.PositiveSmallIntegerField(choices=[(0, 'Pending'), (1, 'Processed'), (2, 'Failed')], default=0, verbose_name='Status')),
                 ('completed_at', models.DateTimeField(blank=True, null=True, verbose_name='Completed at')),
                 ('errors', models.TextField(blank=True, help_text='Errors encountered on processing', null=True, verbose_name='Errors')),

@@ -147,3 +147,11 @@ REST_FRAMEWORK = {
 
 TRANSACTION_MAX_DIGITS = 32
 TRANSACTION_DECIMAL_PLACES = 5
+
+MEDIA_ROOT = "media/"
+CSV_UPLOAD_PATH = "uploaded_trade_csv/"
+
+# Celery Configuration Options
+CELERY_TASK_TRACK_STARTED = True
+CELERY_TASK_TIME_LIMIT = 30 * 60
+CELERY_BROKER_URL = "amqp://guest:guest@rabbitmq3:5672/"

@@ -1,10 +1,13 @@
 from django.conf import settings
+from django.db import transaction
 from django.utils.translation import gettext_lazy as _
 from rest_framework import serializers
 from trading.models import (
     Order,
     Stock,
+    TradeDataFile,
 )
+from trading.tasks import process_trade_data_file
 
 
 class StockSerializer(serializers.ModelSerializer):
@@ -48,3 +51,19 @@ class OrderSerializer(serializers.ModelSerializer):
                 )
             validated_data["quantity"] = -validated_data["quantity"]
         return super().create(validated_data)
+
+
+class TradeDataFileSerializer(serializers.ModelSerializer):
+    uploaded_by_user = serializers.HiddenField(
+        default=serializers.CurrentUserDefault()
+    )
+
+    class Meta:
+        model = TradeDataFile
+        fields = ["id", "uploaded_file", "uploaded_by_user"]
+
+    @transaction.atomic
+    def create(self, validated_data: dict) -> TradeDataFile:
+        instance = super().create(validated_data)
+        process_trade_data_file.delay_on_commit(instance.pk)
+        return instance
