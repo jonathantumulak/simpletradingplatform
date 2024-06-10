@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 import os
 from pathlib import Path
 
+from celery.schedules import crontab
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -44,6 +46,7 @@ INSTALLED_APPS = [
     # 3rd party apps
     "rest_framework",
     "drf_yasg",
+    "django_celery_beat",
     # local apps
     "trading",
 ]
@@ -150,8 +153,16 @@ TRANSACTION_DECIMAL_PLACES = 5
 
 MEDIA_ROOT = "media/"
 CSV_UPLOAD_PATH = "uploaded_trade_csv/"
+CSV_PARSE_PATH = "trade_csvs/"
 
 # Celery Configuration Options
 CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_TIME_LIMIT = 30 * 60
 CELERY_BROKER_URL = "amqp://guest:guest@rabbitmq3:5672/"
+CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+CELERY_BEAT_SCHEDULE = {
+    "fetch-trade-data-csv": {
+        "task": "trading.tasks.fetch_trade_data_csv_file",
+        "schedule": crontab(minute="*/1"),
+    },
+}

@@ -1,5 +1,8 @@
+import pathlib
+
 import mock
 from django.contrib.auth.models import User
+from django.core.files.storage import default_storage
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db.models import Max
 from django.test import (
@@ -16,7 +19,10 @@ from trading.models import (
     Order,
     TradeDataFile,
 )
-from trading.tasks import process_trade_data_file
+from trading.tasks import (
+    fetch_trade_data_csv_file,
+    process_trade_data_file,
+)
 from trading.tests.test_services import (
     CSVBuilderMixin,
     OrderData,
@@ -134,3 +140,55 @@ class ProcessTradeDataFileTaskTestCase(CSVBuilderMixin, TestCase):
             f"Failed to process order. Not enough stock balance for {symbol}. Stock available: {order.quantity}",
             trade_data_file.errors,
         )
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+class FetchTradeDataFileTaskTestCase(CSVBuilderMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+
+        # create separate directory for fetching csv
+        self.fetch_csv_dir = self.tmp_media_dir.joinpath("fetch_csv_dir/")
+        self.upload_storage_dir = default_storage.path(self.fetch_csv_dir)
+
+        self.upload_dir_settings = override_settings(
+            CSV_PARSE_PATH=self.upload_storage_dir
+        )
+        self.upload_dir_settings.enable()
+        self.addCleanup(self.cleanup_upload_dir_settings)
+
+        self.user = UserFactory()
+        self.stock = StockFactory()
+        self.stock2 = StockFactory()
+        self.add_data(OrderData(self.user.id, self.stock.symbol, "10", "BUY"))
+        self.add_data(OrderData(self.user.id, self.stock2.symbol, "20", "BUY"))
+        self.file_path = self.build_csv_file()
+
+    def cleanup_upload_dir_settings(self):
+        self.upload_dir_settings.disable()
+
+    def test_fetch_trade_data_file_task(self):
+        fetch_trade_data_csv_file.delay()
+
+        self.assertFalse(pathlib.Path(self.file_path).exists())
+
+        trade_data_files = TradeDataFile.objects.all()
+        self.assertEqual(trade_data_files.count(), 1)
+        trade_data_file = trade_data_files.get()
+        self.assertEqual(trade_data_file.status, TradeDataFile.NEW)
+        self.assertIsNone(trade_data_file.completed_at)
+
+    def test_fetch_trade_data_file_task_commit(self):
+        with mock.patch("django.db.transaction.on_commit", lambda t: t()):
+            fetch_trade_data_csv_file.delay()
+
+        self.assertFalse(pathlib.Path(self.file_path).exists())
+
+        trade_data_files = TradeDataFile.objects.all()
+        self.assertEqual(trade_data_files.count(), 1)
+        trade_data_file = trade_data_files.get()
+        self.assertEqual(trade_data_file.status, TradeDataFile.PROCESSED)
+        self.assertIsNotNone(trade_data_file.completed_at)
+
+        orders = Order.objects.filter(user=self.user, order_type=Order.BUY)
+        self.assertEqual(orders.count(), 2)

@@ -43,6 +43,21 @@ services:
       - POSTGRES_PASSWORD=postgres
     depends_on:
       - web
+      - migration
+      - rabbitmq3
+  beat:
+    restart: always
+    build: .
+    command: celery -A simpletradingplatform beat -l info
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - web
+      - migration
       - rabbitmq3
   rabbitmq3:
     container_name: "rabbitmq"
