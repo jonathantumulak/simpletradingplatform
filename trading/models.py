@@ -2,7 +2,6 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.db import models
 from django.db.models import Sum
-from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django_extensions.db.models import TimeStampedModel
 from trading.constants import (
@@ -62,7 +61,7 @@ class TradeDataFile(TradeDataFileStatuses, TimeStampedModel):
         verbose_name=_("Uploaded File"),
         blank=False,
         null=False,
-        upload_to=f"{settings.MEDIA_ROOT}{settings.CSV_UPLOAD_PATH}",
+        upload_to=settings.CSV_UPLOAD_PATH,
     )
     status = models.PositiveSmallIntegerField(
         verbose_name=_("Status"),
@@ -86,18 +85,3 @@ class TradeDataFile(TradeDataFileStatuses, TimeStampedModel):
         related_name="uploaded_trade_data_files",
         on_delete=models.CASCADE,
     )
-
-    def set_to_processing(self):
-        self.status = TradeDataFileStatuses.PROCESSING
-        self.save(update_fields=["status"])
-
-    def set_to_processed(self):
-        self.status = TradeDataFileStatuses.PROCESSED
-        self.completed_at = timezone.now()
-        self.save(update_fields=["status", "completed_at"])
-
-    def set_to_failed(self, errors: str):
-        self.status = TradeDataFileStatuses.FAILED
-        self.completed_at = timezone.now()
-        self.errors = errors
-        self.save(update_fields=["status", "errors", "completed_at"])

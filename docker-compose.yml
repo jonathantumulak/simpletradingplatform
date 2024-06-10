@@ -31,3 +31,22 @@ services:
       - POSTGRES_PASSWORD=postgres
     depends_on:
       - web
+  celery:
+    restart: always
+    build: .
+    command: celery -A simpletradingplatform worker -l info
+    volumes:
+      - .:/app
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - web
+      - rabbitmq3
+  rabbitmq3:
+    container_name: "rabbitmq"
+    image: rabbitmq:3-management-alpine
+    ports:
+      - 5672:5672
+      - 15672:15672

@@ -4,10 +4,12 @@ from rest_framework.permissions import IsAuthenticated
 from trading.models import (
     Order,
     Stock,
+    TradeDataFile,
 )
 from trading.serializers import (
     OrderSerializer,
     StockSerializer,
+    TradeDataFileSerializer,
 )
 
 
@@ -35,4 +37,14 @@ class OrderViewSet(viewsets.ModelViewSet):
     ]
 
     def get_queryset(self, *args, **kwargs) -> QuerySet:
-        return self.queryset.filter(user=self.request.user)
+        return self.queryset.filter(user=self.request.user).select_related(
+            "stock"
+        )
+
+
+class TradeDataFileViewSet(viewsets.ModelViewSet):
+    """View set for Trade Data Files"""
+
+    queryset = TradeDataFile.objects.all()
+    serializer_class = TradeDataFileSerializer
+    http_method_names = ["post"]
