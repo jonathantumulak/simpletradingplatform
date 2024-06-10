@@ -4,6 +4,7 @@ from factory.django import DjangoModelFactory
 from trading.models import (
     Order,
     Stock,
+    TradeDataFile,
 )
 
 
@@ -39,3 +40,10 @@ class OrderFactory(DjangoModelFactory):
 
     class Meta:
         model = Order
+
+
+class TradeDataFileFactory(DjangoModelFactory):
+    uploaded_by_user = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = TradeDataFile
