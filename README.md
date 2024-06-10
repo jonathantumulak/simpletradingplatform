@@ -10,6 +10,7 @@ Steps to run:
 
 1. Run project with command `docker compose up --build -d`
 2. Open `http://localhost:8000/api/` on a web browser to access the app api interface
+3. For automatic parsing of csv files, it will be fetched on `trade_csvs` directory every minute.
 
 To run via docker:
 
