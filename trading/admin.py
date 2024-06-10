@@ -2,6 +2,7 @@ from django.contrib import admin
 from trading.models import (
     Order,
     Stock,
+    TradeDataFile,
 )
 
 
@@ -18,5 +19,14 @@ class OrderAdmin(admin.ModelAdmin):
     list_filter = ("order_type",)
 
 
+class TradeDataFileAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "status",
+        "completed_at",
+    )
+
+
 admin.site.register(Stock, StockAdmin)
 admin.site.register(Order, OrderAdmin)
+admin.site.register(TradeDataFile, TradeDataFileAdmin)
