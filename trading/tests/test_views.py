@@ -1,3 +1,6 @@
+import mock
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import override_settings
 from rest_framework import status
 from rest_framework.reverse import reverse
 from rest_framework.test import APITestCase
@@ -6,7 +9,14 @@ from trading.factories import (
     StockFactory,
     UserFactory,
 )
-from trading.models import Order
+from trading.models import (
+    Order,
+    TradeDataFile,
+)
+from trading.tests.test_services import (
+    CSVBuilderMixin,
+    OrderData,
+)
 
 
 class TestStockViewSet(APITestCase):
@@ -114,3 +124,62 @@ class TestOrderViewSet(APITestCase):
             ),
             errors,
         )
+
+
+@override_settings(CELERY_TASK_ALWAYS_EAGER=True)
+class TestTradeDataFileViewSet(CSVBuilderMixin, APITestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = UserFactory()
+        self.stock = StockFactory()
+        self.add_data(OrderData(self.user.id, self.stock.symbol, "10", "BUY"))
+        self.url = reverse("tradedatafile-list")
+        self.client.force_authenticate(user=self.user)
+
+    def test_get_list(self):
+        """
+        Test for listing all trade data files
+        """
+        response = self.client.get(self.url)
+        self.assertEqual(
+            response.status_code, status.HTTP_405_METHOD_NOT_ALLOWED
+        )
+
+    def test_post(self):
+        filename, content = self.write_csv()
+
+        response = self.client.post(
+            self.url,
+            {
+                "uploaded_file": SimpleUploadedFile(
+                    filename, content.encode("utf-8")
+                )
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        data = response.json()
+        trade_data_file = TradeDataFile.objects.get()
+        self.assertEqual(data["id"], trade_data_file.id)
+        self.assertEqual(trade_data_file.status, TradeDataFile.NEW)
+
+    def test_post_commit(self):
+        filename, content = self.write_csv()
+
+        with mock.patch("django.db.transaction.on_commit", lambda t: t()):
+            response = self.client.post(
+                self.url,
+                {
+                    "uploaded_file": SimpleUploadedFile(
+                        filename, content.encode("utf-8")
+                    )
+                },
+                format="multipart",
+            )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        data = response.json()
+        trade_data_file = TradeDataFile.objects.get()
+        self.assertEqual(data["id"], trade_data_file.id)
+        self.assertEqual(trade_data_file.status, TradeDataFile.PROCESSED)

@@ -246,7 +246,7 @@ class TradeDataFileProcessor:
 
         return cleaned_values
 
-    def _validate_order(self, values: dict[str, Any]) -> bool:
+    def _validate_order(self, values: dict[str, Any]):
         symbol = values["stock"].symbol
         user_id = values["user"].id
         allowed, quantity = self.portfolio_cache.find(
