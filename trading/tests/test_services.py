@@ -108,7 +108,7 @@ class CSVParserTestCase(CSVBuilderMixin, TestCase):
         rows = [row for row in parser]
         self.assertDictEqual(
             rows[0],
-            {"user": "1", "stock": "NVDA", "quantity": 10, "order_type": "BUY"},
+            {"user": 1, "stock": "NVDA", "quantity": 10, "order_type": "BUY"},
         )
 
     def test_csv_parser_missing_header_error(self):
@@ -269,6 +269,18 @@ class TradeDataFileProcessorTestCase(CSVBuilderMixin, TestCase):
         with self.assertRaises(InvalidImportFile):
             processor.process()
 
+    def test_invalid_user_str(self):
+        self.add_data(OrderData("INVALID", self.stock.symbol, "10", "BUY"))
+        filename, content = self.write_csv()
+        trade_data_file = TradeDataFileFactory(
+            uploaded_by_user=self.user,
+            uploaded_file=SimpleUploadedFile(filename, content.encode("utf-8")),
+        )
+
+        processor = TradeDataFileProcessor(trade_data_file)
+        with self.assertRaises(InvalidImportFile):
+            processor.process()
+
     def test_invalid_stock(self):
         self.add_data(OrderData(self.user.id, "NONE", "10", "BUY"))
         filename, content = self.write_csv()
@@ -284,6 +296,21 @@ class TradeDataFileProcessorTestCase(CSVBuilderMixin, TestCase):
     def test_insufficient_balance(self):
         order = OrderFactory(quantity=10)
         self.add_data(OrderData(self.user.id, order.stock.symbol, "20", "SELL"))
+        filename, content = self.write_csv()
+        trade_data_file = TradeDataFileFactory(
+            uploaded_by_user=self.user,
+            uploaded_file=SimpleUploadedFile(filename, content.encode("utf-8")),
+        )
+
+        processor = TradeDataFileProcessor(trade_data_file)
+        with self.assertRaises(InvalidImportFile):
+            processor.process()
+
+    def test_invalid_quantity(self):
+        order = OrderFactory(quantity=10)
+        self.add_data(
+            OrderData(self.user.id, order.stock.symbol, "INVALID", "BUY")
+        )
         filename, content = self.write_csv()
         trade_data_file = TradeDataFileFactory(
             uploaded_by_user=self.user,

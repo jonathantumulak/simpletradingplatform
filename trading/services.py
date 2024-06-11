@@ -89,9 +89,9 @@ class CSVParser:
         for header in self.expected_headers:
             cleaned_header = self.clean_header(header)
             idx = self.headers_indexes_dict[cleaned_header]
-            if cleaned_header == "quantity":
+            try:
                 row_data[cleaned_header] = int(row[idx].strip())
-            else:
+            except ValueError:
                 row_data[cleaned_header] = row[idx].strip()
 
         return row_data
@@ -99,10 +99,15 @@ class CSVParser:
 
 class BaseCache:
     def __init__(
-        self, model: Any, lookup_field: str = None, csv_field_header: str = None
+        self,
+        model: Any,
+        lookup_field: str = None,
+        lookup_field_type: str | int = None,
+        csv_field_header: str = None,
     ):
         self.model = model
         self.lookup_field = lookup_field
+        self.lookup_field_type = lookup_field_type
         self.csv_field_header = csv_field_header
         self._cache = None
 
@@ -120,7 +125,11 @@ class BaseCache:
         items = []
         for row_data in rows:
             value = row_data.get(self.csv_field_header)
-            if value and value not in self._cache.keys():
+            if (
+                value
+                and value not in self._cache.keys()
+                and type(value) == self.lookup_field_type
+            ):
                 items.append(row_data[self.csv_field_header])
         self.add_items(items)
 
@@ -134,9 +143,12 @@ class PortfolioCache(BaseCache):
         self,
         model: Order = Order,
         lookup_field: str = "user_id",
+        lookup_field_type: str | int = int,
         csv_field_header: str = "user",
     ):
-        super().__init__(model, lookup_field, csv_field_header)
+        super().__init__(
+            model, lookup_field, lookup_field_type, csv_field_header
+        )
         self._cache: defaultdict[int, dict[str, int]] = defaultdict(
             lambda: defaultdict(int)
         )
@@ -168,17 +180,20 @@ class UserCache(BaseCache):
         self,
         model: User = User,
         lookup_field: str = "id",
+        lookup_field_type: str | int = int,
         csv_field_header: str = "user",
     ):
-        super().__init__(model, lookup_field, csv_field_header)
+        super().__init__(
+            model, lookup_field, lookup_field_type, csv_field_header
+        )
         self._cache: defaultdict[int, User | None] = defaultdict(lambda: None)
 
     def build_cache(self, queryset: QuerySet):
         for user in queryset:
             self._cache[user.id] = user
 
-    def find(self, user_id: str) -> User:
-        return self._cache[int(user_id)]
+    def find(self, user_id: int) -> User:
+        return self._cache[user_id]
 
 
 class StockCache(BaseCache):
@@ -188,9 +203,12 @@ class StockCache(BaseCache):
         self,
         model: Stock = Stock,
         lookup_field: str = "symbol",
+        lookup_field_type: str | int = str,
         csv_field_header: str = "stock",
     ):
-        super().__init__(model, lookup_field, csv_field_header)
+        super().__init__(
+            model, lookup_field, lookup_field_type, csv_field_header
+        )
         self._cache: defaultdict[str, Stock | None] = defaultdict(lambda: None)
 
     def build_cache(self, queryset: QuerySet):
@@ -221,10 +239,18 @@ class TradeDataFileProcessor:
         else:
             cleaned_values["order_type"] = OrderTypes.CSV_MAP[order_type]
 
+        quantity = values.get("quantity")
+        try:
+            cleaned_values["quantity"] = int(quantity)
+        except ValueError:
+            raise InvalidImportFile(f"Invalid quantity: {quantity}")
+        if cleaned_values["order_type"] == Order.SELL:
+            cleaned_values["quantity"] = -cleaned_values["quantity"]
+
         user_id = values.get("user")
         user = self.user_cache.find(user_id)
         if not user:
-            raise InvalidImportFile(f"User (id={user_id}) not found.")
+            raise InvalidImportFile(f"User ({user_id}) not found.")
         else:
             cleaned_values["user"] = user
 
@@ -234,10 +260,6 @@ class TradeDataFileProcessor:
             raise InvalidImportFile(f"Stock (symbol={stock_symbol}) not found.")
         else:
             cleaned_values["stock"] = stock
-
-        cleaned_values["quantity"] = values.get("quantity")
-        if cleaned_values["order_type"] == Order.SELL:
-            cleaned_values["quantity"] = -cleaned_values["quantity"]
 
         return cleaned_values
 

@@ -104,9 +104,21 @@ class ProcessTradeDataFileTaskTestCase(CSVBuilderMixin, TestCase):
         trade_data_file.refresh_from_db()
         self.assertEqual(trade_data_file.status, TradeDataFile.FAILED)
         self.assertIsNotNone(trade_data_file.completed_at)
-        self.assertIn(
-            f"User (id={max_id + 1}) not found.", trade_data_file.errors
+        self.assertIn(f"User ({max_id + 1}) not found.", trade_data_file.errors)
+
+    def test_invalid_user_str(self):
+        self.add_data(OrderData("INVALID", self.stock.symbol, "10", "BUY"))
+        filename, content = self.write_csv()
+        trade_data_file = TradeDataFileFactory(
+            uploaded_by_user=self.user,
+            uploaded_file=SimpleUploadedFile(filename, content.encode("utf-8")),
         )
+
+        process_trade_data_file.delay(trade_data_file.id)
+        trade_data_file.refresh_from_db()
+        self.assertEqual(trade_data_file.status, TradeDataFile.FAILED)
+        self.assertIsNotNone(trade_data_file.completed_at)
+        self.assertIn("User (INVALID) not found.", trade_data_file.errors)
 
     def test_invalid_stock(self):
         self.add_data(OrderData(self.user.id, "NONE", "10", "BUY"))
@@ -140,6 +152,22 @@ class ProcessTradeDataFileTaskTestCase(CSVBuilderMixin, TestCase):
             f"Failed to process order. Not enough stock balance for {symbol}. Stock available: {order.quantity}",
             trade_data_file.errors,
         )
+
+    def test_invalid_quantity(self):
+        self.add_data(
+            OrderData(self.user.id, self.stock.symbol, "INVALID", "BUY")
+        )
+        filename, content = self.write_csv()
+        trade_data_file = TradeDataFileFactory(
+            uploaded_by_user=self.user,
+            uploaded_file=SimpleUploadedFile(filename, content.encode("utf-8")),
+        )
+
+        process_trade_data_file.delay(trade_data_file.id)
+        trade_data_file.refresh_from_db()
+        self.assertEqual(trade_data_file.status, TradeDataFile.FAILED)
+        self.assertIsNotNone(trade_data_file.completed_at)
+        self.assertIn("Invalid quantity: INVALID", trade_data_file.errors)
 
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)

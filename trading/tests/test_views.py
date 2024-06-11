@@ -128,6 +128,32 @@ class TestOrderViewSet(APITestCase):
             errors,
         )
 
+    def test_create_buy_order_invalid_quantity(self):
+        """
+        Test for create buy order with invalid quantity
+        """
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            self.url,
+            {
+                "stock": self.stock.id,
+                "quantity": "ABC",
+                "order_type": Order.BUY,
+            },
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_create_buy_order_invalid_order_type(self):
+        """
+        Test for create buy order with invalid order_type
+        """
+        self.client.force_authenticate(user=self.user)
+        response = self.client.post(
+            self.url,
+            {"stock": self.stock.id, "quantity": 10, "order_type": "INVALID"},
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
 
 @override_settings(CELERY_TASK_ALWAYS_EAGER=True)
 class TestTradeDataFileViewSet(CSVBuilderMixin, APITestCase):
