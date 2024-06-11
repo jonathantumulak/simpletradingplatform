@@ -7,9 +7,22 @@ services:
       - POSTGRES_DB=postgres
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
+  migration:
+    build: .
+    volumes:
+      - .:/app
+    command: python manage.py migrate
+    restart: on-failure:10
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - db
   web:
     build: .
     command: python manage.py runserver 0.0.0.0:8000
+    restart: on-failure
     volumes:
       - .:/app
     ports:
@@ -20,17 +33,6 @@ services:
       - POSTGRES_PASSWORD=postgres
     depends_on:
       - db
-  migration:
-    build: .
-    volumes:
-      - .:/app
-    command: python manage.py migrate
-    environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    depends_on:
-      - web
   celery:
     restart: always
     build: .
@@ -42,6 +44,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     depends_on:
+      - db
       - web
       - migration
       - rabbitmq3
@@ -56,6 +59,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     depends_on:
+      - db
       - web
       - migration
       - rabbitmq3
