@@ -47,6 +47,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_yasg",
     "django_celery_beat",
+    "django_filters",
     # local apps
     "trading",
 ]
@@ -145,6 +146,9 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.AllowAny",
+    ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend"
     ],
 }
 

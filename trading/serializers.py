@@ -67,3 +67,16 @@ class TradeDataFileSerializer(serializers.ModelSerializer):
         instance = super().create(validated_data)
         process_trade_data_file.delay_on_commit(instance.pk)
         return instance
+
+
+class InvestmentSerializer(serializers.Serializer):
+    user_id = serializers.IntegerField()
+    stock_symbol = serializers.CharField(source="stock__symbol")
+    total_value = serializers.DecimalField(
+        normalize_output=True,
+        max_digits=settings.TRANSACTION_MAX_DIGITS,
+        decimal_places=settings.TRANSACTION_DECIMAL_PLACES,
+    )
+
+    class Meta:
+        fields = ["user_id", "stock_symbol", "total_value"]
