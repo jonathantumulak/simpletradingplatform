@@ -24,7 +24,17 @@ class Stock(TimeStampedModel):
         return f"{self.name} ({self.symbol})"
 
 
+class OrderQuerySet(models.QuerySet):
+    def annotate_total_quantity_user_stock(self):
+        return self.values("user_id", "stock__symbol").annotate(
+            total_quantity=Sum("quantity")
+        )
+
+
 class OrderManager(models.Manager):
+    def get_queryset(self):
+        return OrderQuerySet(self.model, using=self._db)
+
     def get_available_balance(self, stock: Stock, user: User) -> int:
         return (
             self.get_queryset()

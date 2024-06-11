@@ -8,10 +8,7 @@ from typing import (
 from django.contrib.auth.models import User
 from django.core.files.storage import default_storage
 from django.db import transaction
-from django.db.models import (
-    QuerySet,
-    Sum,
-)
+from django.db.models import QuerySet
 from django.utils import timezone
 from more_itertools import ichunked
 from trading.constants import OrderTypes
@@ -145,10 +142,8 @@ class PortfolioCache(BaseCache):
         )
 
     def build_cache(self, queryset: QuerySet):
-        query = (
-            queryset.values("user_id", "stock__symbol")
-            .annotate(total_quantity=Sum("quantity"))
-            .order_by("-total_quantity")
+        query = queryset.annotate_total_quantity_user_stock().order_by(
+            "-total_quantity"
         )
         for values in query:
             self._cache[values["user_id"]][values["stock__symbol"]] = values[

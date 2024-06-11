@@ -1,4 +1,8 @@
-from django.db.models import QuerySet
+from django.db.models import (
+    F,
+    QuerySet,
+)
+from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from trading.models import (
@@ -7,6 +11,7 @@ from trading.models import (
     TradeDataFile,
 )
 from trading.serializers import (
+    InvestmentSerializer,
     OrderSerializer,
     StockSerializer,
     TradeDataFileSerializer,
@@ -48,3 +53,16 @@ class TradeDataFileViewSet(viewsets.ModelViewSet):
     queryset = TradeDataFile.objects.all()
     serializer_class = TradeDataFileSerializer
     http_method_names = ["post"]
+
+
+class InvestmentViewSet(viewsets.ModelViewSet):
+    queryset = Order.objects.all()
+    serializer_class = InvestmentSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ["user", "stock__symbol"]
+    http_method_names = ["get"]
+
+    def get_queryset(self):
+        return self.queryset.annotate_total_quantity_user_stock().annotate(
+            total_value=F("total_quantity") * F("stock__price")
+        )
