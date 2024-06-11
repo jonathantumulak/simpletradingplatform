@@ -166,6 +166,7 @@ class TestTradeDataFileViewSet(CSVBuilderMixin, APITestCase):
         trade_data_file = TradeDataFile.objects.get()
         self.assertEqual(data["id"], trade_data_file.id)
         self.assertEqual(trade_data_file.status, TradeDataFile.NEW)
+        self.assertEqual(trade_data_file.uploaded_by_user, self.user)
 
     def test_post_commit(self):
         filename, content = self.write_csv()
@@ -186,6 +187,28 @@ class TestTradeDataFileViewSet(CSVBuilderMixin, APITestCase):
         trade_data_file = TradeDataFile.objects.get()
         self.assertEqual(data["id"], trade_data_file.id)
         self.assertEqual(trade_data_file.status, TradeDataFile.PROCESSED)
+        self.assertEqual(trade_data_file.uploaded_by_user, self.user)
+
+    def test_post_unathenticated_user(self):
+        self.client.logout()
+        filename, content = self.write_csv()
+
+        response = self.client.post(
+            self.url,
+            {
+                "uploaded_file": SimpleUploadedFile(
+                    filename, content.encode("utf-8")
+                )
+            },
+            format="multipart",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        data = response.json()
+        trade_data_file = TradeDataFile.objects.get()
+        self.assertEqual(data["id"], trade_data_file.id)
+        self.assertEqual(trade_data_file.status, TradeDataFile.NEW)
+        self.assertIsNone(trade_data_file.uploaded_by_user)
 
 
 class TestInvestmentViewSet(APITestCase):

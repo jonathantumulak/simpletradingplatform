@@ -10,6 +10,14 @@ from trading.models import (
 from trading.tasks import process_trade_data_file
 
 
+class AuthenticatedUserOrNone(serializers.CurrentUserDefault):
+    def __call__(self, serializer_field):
+        user = super().__call__(serializer_field)
+        if user.is_authenticated:
+            return user
+        return None
+
+
 class StockSerializer(serializers.ModelSerializer):
     price = serializers.DecimalField(
         normalize_output=True,
@@ -55,7 +63,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class TradeDataFileSerializer(serializers.ModelSerializer):
     uploaded_by_user = serializers.HiddenField(
-        default=serializers.CurrentUserDefault()
+        default=AuthenticatedUserOrNone()
     )
 
     class Meta:
